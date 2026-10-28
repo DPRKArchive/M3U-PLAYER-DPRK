@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Korean Central Broadcasting Station</title>
+
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+
+<style>
+    body {
+        margin: 0;
+        padding: 20px;
+        background: #111;
+        color: #eee;
+        font-family: Arial, sans-serif;
+        text-align: center;
+    }
+
+    #status {
+        margin: 12px 0;
+        color: #ccc;
+        overflow-wrap: anywhere;
+    }
+</style>
+</head>
+<body>
+<div class="player">
+<h2>Korean Central Broadcasting Station</h2>
+
+
+    <video id="video" controls playsinline preload="metadata"></video>
+
+    <p id="status">Initializing player...</p>
+    <p>See also:</p>
+    <a href="VOK.html">Voice Of Korea</a>
+</div>
+
+<script>
+    const status = document.getElementById('status');
+
+    const playlistUrl =
+        'https://live.koryocdn.org/kcradio1/index.m3u8';
+
+    function setStatus(message) {
+        status.textContent = message;
+    }
+
+    function tryPlay() {
+        video.play().catch(() => {
+            setStatus(
+                'Stream loaded. Press Play to start playback.'
+            );
+        });
+    }
+
+    // Native HLS support, commonly available in Safari.
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = playlistUrl;
+
+        video.addEventListener('loadedmetadata', () => {
+            setStatus('Stream loaded.');
+        });
+
+        video.addEventListener('error', () => {
+            setStatus(
+                'Unable to play this playlist. Check its format, URL, and stream availability.'
+            );
+        });
+
+    } else if (Hls.isSupported()) {
+        const hls = new Hls({
+            enableWorker: true,
+            capLevelToPlayerSize: true
+        });
+
+        hls.loadSource(playlistUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            setStatus('Playlist loaded. Starting playback...');
+            tryPlay();
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            console.error('HLS error:', data);
+
+            if (data.fatal) {
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        setStatus(
+                            'Network error loading stream. Check the playlist URL, server availability, and CORS permissions.'
+                        );
+                        hls.startLoad();
+                        break;
+
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        setStatus('Recovering from a media error...');
+                        hls.recoverMediaError();
+                        break;
+
+                    default:
+                        setStatus(
+                            'Fatal playback error. The playlist may not be a supported HLS stream.'
+                        );
+                        hls.destroy();
+                        break;
+                }
+            }
+        });
+
+    } else {
+        setStatus(
+            'This browser does not support HLS playback. Try a current version of Safari, Chrome, or Firefox.'
+        );
+    }
+</script>
+</body>
+</html>
