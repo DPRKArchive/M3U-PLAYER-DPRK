@@ -1,4 +1,7 @@
-<html lang="en"><head>
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Korean Central Television</title>
@@ -39,7 +42,7 @@
 <body>
 <div class="player">
 <h2>Korean Central Television - 4:3 Version</h2>
-    <p>The current time in the DPRK is: <span id="pyongyang-time">10:03:52 pm</span></p>
+    <p>The current time in the DPRK is: <span id="pyongyang-time"></span></p>
 
     <script>
         function updateTime() {
@@ -60,19 +63,98 @@
     </script>
 
 
-    <iframe src="https://player.twitch.tv/?channel=zoltascentral&amp;parent=dprkarchive.github.io&amp;muted=false" height="480" width="640" allowfullscreen="Y">
-</iframe>
+    <video id="video" controls playsinline preload="metadata"></video>
 
-    <p id="status">Unable to play this playlist. Check its format, URL, and stream availability.</p>
+    <p id="status">Initializing player...</p>
     <p>See also:</p>
     <a href="Ryongnamsan.html">Ryongnamsan Television</a>
-    <br><br>
-    <a href="sports.html">Sports Television</a>
-    <br><br>
+    <br></br>
     <a href="KCTV_backup.html">16:9 backup</a>
-    <br><br>
+    <br></br>
     <a href="KCTV.html">16:9 main</a>
+    <br></br>
+    <a href="sports.html">Sports Television</a>
 </div>
 
+<script>
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
 
-</body></html>
+    const playlistUrl =
+        'http://192.168.0.216:8080/hls/dprk-stream/index.m3u8';
+
+    function setStatus(message) {
+        status.textContent = message;
+    }
+
+    function tryPlay() {
+        video.play().catch(() => {
+            setStatus(
+                'Stream loaded. Press Play to start playback.'
+            );
+        });
+    }
+
+    // Native HLS support, commonly available in Safari.
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = playlistUrl;
+
+        video.addEventListener('loadedmetadata', () => {
+            setStatus('Stream loaded.');
+        });
+
+        video.addEventListener('error', () => {
+            setStatus(
+                'Unable to play this playlist. Check its format, URL, and stream availability.'
+            );
+        });
+
+    } else if (Hls.isSupported()) {
+        const hls = new Hls({
+            enableWorker: true,
+            capLevelToPlayerSize: true
+        });
+
+        hls.loadSource(playlistUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            setStatus('Playlist loaded. Starting playback...');
+            tryPlay();
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            console.error('HLS error:', data);
+
+            if (data.fatal) {
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        setStatus(
+                            'Network error loading stream. Check the playlist URL, server availability, and CORS permissions.'
+                        );
+                        hls.startLoad();
+                        break;
+
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        setStatus('Recovering from a media error...');
+                        hls.recoverMediaError();
+                        break;
+
+                    default:
+                        setStatus(
+                            'Fatal playback error. The playlist may not be a supported HLS stream.'
+                        );
+                        hls.destroy();
+                        break;
+                }
+            }
+        });
+
+    } else {
+        setStatus(
+            'This browser does not support HLS playback. Try a current version of Safari, Chrome, or Firefox.'
+        );
+    }
+</script>
+</body>
+</html>
