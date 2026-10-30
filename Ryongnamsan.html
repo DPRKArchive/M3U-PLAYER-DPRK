@@ -42,6 +42,25 @@
 <body>
 <div class="player">
 <h2>Ryongnamsan Television</h2>
+    <p>The current time in the DPRK is: <span id="pyongyang-time"></span></p>
+
+        <script>
+            function updateTime() {
+                const options = {
+                    timeZone: 'Asia/Pyongyang',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                };
+                const formatter = new Intl.DateTimeFormat('en-GB', options);
+                document.getElementById('pyongyang-time').textContent = formatter.format(new Date());
+            }
+
+            // Update immediately and then every second
+            updateTime();
+            setInterval(updateTime, 1000);
+        </script>
 
 
     <video id="video" controls playsinline preload="metadata"></video>
